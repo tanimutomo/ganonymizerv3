@@ -21,6 +21,7 @@ class GANonymizer:
             setattr(self, k, v)
         self.debugger = Debugger(opt.mode, save_dir=opt.inter_log)
 
+        print('[INFO] Loading modules')
         self.ss = SemanticSegmenter(opt)
         self.mc = MaskCreater(opt)
         self.ii = ImageInpainter(opt)
@@ -36,44 +37,51 @@ class GANonymizer:
         Returns:
             output image (PIL.Image)
         """
-        img = self._preprocess(pil_img) # to torch.tensor in [0, 1]
+        # resize and convert to torch.Tensor
+        img, base_size = self.preprocess(pil_img)
 
         # semantic segmentation for detecting dynamic objects and creating mask
-        label_map = self._semseg(img)
+        label_map = self.detect(img)
 
         # get object mask
-        mask = self._create_mask(img, label_map)
+        mask, max_obj_size = self.create_mask(img, label_map)
 
         # image and edge inpainting
-        out = self._inpaint(img, mask)
+        inpainted = self.inpaint(img, mask, max_obj_size)
 
-        return self.to_pil(out)
+        # resize and convert to PIL
+        output = self.postprocess(inpainted, base_size)
 
-    def _preprocess(self, img):
-        img = self.to_tensor(img)
+        return output
+
+    def preprocess(self, img):
+        print('===== Preprocess =====')
+        print('[INFO] original image size :', img.size)
         if self.resize_factor is None:
-            return img
-        new_h = int(img.shape[1] * self.resize_factor)
-        new_w = int(img.shape[2] * self.resize_factor)
-        new_h -= new_h % 4
+            return self.to_tensor(img), img.size
+        new_w = int(img.size[0] * self.resize_factor)
+        new_h = int(img.size[1] * self.resize_factor)
         new_w -= new_w % 4
-        img = self.to_pil(img).resize((new_w, new_h))
-        return self.to_tensor(img)
+        new_h -= new_h % 4
+        img = img.resize((new_w, new_h))
+        print('[INFO] resized image size :', (new_w, new_h))
+        return self.to_tensor(img), (new_w, new_h)
 
-    def _semseg(self, img):
+    def detect(self, img):
         # semantic segmentation
         print('===== Semantic Segmentation =====')
-        label_map = self.ss.predict(img)
+        label_map = self.ss(img)
 
         vis, lc_img = label_img_to_color(label_map)
         self.debugger.imsave(vis, 'color_semseg_map.png')
         self.debugger.imsave(lc_img, 'label_color_map.png')
         return label_map
 
-    def _create_mask(self, img, label_map):
+    def create_mask(self, img, label_map):
         # create mask image and image with mask
         print('===== Creating Mask Image =====')
-        mask = self.mc.create_mask(label_map) # shape=(h, w) # dtype=torch.uint8
+        mask, max_obj_size = self.mc(label_map) # shape=(h, w) # dtype=torch.float32
+        print('[INFO] max_obj_size :', max_obj_size)
 
         # visualize the mask overlayed image
         mask3c = torch.stack([mask, torch.zeros_like(mask), torch.zeros_like(mask)], dim=0) 
@@ -81,12 +89,18 @@ class GANonymizer:
         overlay = ((img*0.8 + mask3c*0.2) * 255).to(torch.uint8)
         self.debugger.imsave(mask, 'mask.png')
         self.debugger.imsave(overlay, 'mask_overlayed.png')
-        return mask
+        return mask, max_obj_size
 
-    def _inpaint(self, img, mask):
+    def inpaint(self, img: torch.Tensor, mask: torch.Tensor, max_obj_size: float):
         # inpainter
         print('===== Image Inpainting =====')
-        inpainted, inpainted_edge, edge = self.ii.inpaint(img, mask)
+        inpainted, inpainted_edge, edge = self.ii(img, mask, max_obj_size)
+        print('[INFO] inpainted image size :', inpainted.shape)
         self.debugger.imsave(edge, 'edge.png')
         self.debugger.imsave(inpainted_edge, 'inpainted_edge.png')
         return inpainted
+
+    def postprocess(self, img: torch.Tensor, size: tuple) -> torch.Tensor:
+        out = self.to_pil(img)
+        out = out.resize(size)
+        return out
