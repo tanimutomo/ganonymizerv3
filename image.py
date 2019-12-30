@@ -14,7 +14,8 @@ def main(args=None):
     img, opt.fname, opt.fext = load_img(opt.input)
     model = GANonymizer(opt)
     out = model(img)
-    out.save(os.path.join(opt.log, 'output.png'))
+    if opt.mode != 'debug':
+        out.save(os.path.join(opt.log, 'output.png'))
 
 
 def load_img(img_path):

@@ -14,8 +14,9 @@ def main(args=None):
     count = 1
     # Load the video
     fname, cap, origin_fps, frames, width, height = load_video(opt.input)
-    writer = video_writer(os.path.join(opt.log, 'output.avi'),
-                          origin_fps, width, height*2)
+    if opt.mode != 'debug':
+        writer = video_writer(os.path.join(opt.log, 'output.avi'),
+                            origin_fps, width, height*2)
     model = GANonymizer(opt)
 
     while(cap.isOpened()):
@@ -30,7 +31,8 @@ def main(args=None):
             output = model(img)
             output = np.array(output)
             concat = np.concatenate([frame, output], axis=0)
-            writer.write(concat)
+            if opt.mode != 'debug':
+                writer.write(concat)
             count += 1
         else:
             break

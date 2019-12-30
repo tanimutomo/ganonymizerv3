@@ -76,9 +76,10 @@ class GANonymizer:
         mask = self.mc.create_mask(label_map) # shape=(h, w) # dtype=torch.uint8
 
         # visualize the mask overlayed image
-        mask3c = torch.stack([mask, torch.zeros_like(mask), torch.zeros_like(mask)], dim=0)
-        img = (img * 255).to(torch.uint8)
-        overlay = (img * 0.8 + mask3c * 0.2).to(torch.uint8)
+        mask3c = torch.stack([mask, torch.zeros_like(mask), torch.zeros_like(mask)], dim=0) 
+        self.debugger.matrix(mask3c, 'mask3c')
+        overlay = ((img*0.8 + mask3c*0.2) * 255).to(torch.uint8)
+        self.debugger.imsave(mask, 'mask.png')
         self.debugger.imsave(overlay, 'mask_overlayed.png')
         return mask
 

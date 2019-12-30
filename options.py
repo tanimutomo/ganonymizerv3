@@ -41,12 +41,12 @@ def get_options(args=None):
         opt.log_root,
         datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     )
-    os.makedirs(opt.log)
-    if opt.mode is not 'exec':
-        opt.inter_log = os.path.join(opt.log, 'intermediates')
-        os.mkdir(opt.inter_log)
-    else:
-        opt.inter_log = None
+    opt.inter_log = None
+    if opt.mode != 'debug':
+        os.makedirs(opt.log)
+        if opt.mode == 'save':
+            opt.inter_log = os.path.join(opt.log, 'intermediates')
+            os.mkdir(opt.inter_log)
 
     _print_options(parser, opt)
     return opt
