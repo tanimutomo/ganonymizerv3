@@ -44,7 +44,7 @@ def main(args=None):
 
 
 def load_video(path):
-    print('===== Loading Video =====')
+    print('[INFO] Loading video')
     fname, fext = path.split('/')[-1].split('.')
     cap = cv2.VideoCapture(path)
     W = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -56,7 +56,7 @@ def load_video(path):
     
 
 def video_writer(path, fps, width, height):
-    print("Saved Video Path:", path)
+    print("[INFO] Saved Video Path:", path)
     # video writer
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     writer = cv2.VideoWriter(path, fourcc, fps, (width, height))

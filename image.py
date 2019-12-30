@@ -9,8 +9,6 @@ from options import get_options
 
 def main(args=None):
     opt = get_options(args)
-
-    print('Loading "{}"'.format(opt.input)) 
     img, opt.fname, opt.fext = load_img(opt.input)
     model = GANonymizer(opt)
     out = model(img)
@@ -20,7 +18,7 @@ def main(args=None):
 
 def load_img(img_path):
     # Loading input image
-    print('===== Loading Image =====')
+    print('[INFO] Loading "{}"'.format(img_path)) 
     fname, fext = img_path.split('/')[-1].split('.')
     img = Image.open(img_path)
     return img, fname, fext
