@@ -127,3 +127,13 @@ dmypy.json
 
 # Pyre type checker
 .pyre/
+
+### Custom
+Pipfile
+
+data/
+log/
+
+*.pth
+
+!.gitkeep
