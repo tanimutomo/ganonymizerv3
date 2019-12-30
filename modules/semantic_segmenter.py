@@ -6,12 +6,12 @@ from .deeplabv3.model.deeplabv3 import DeepLabV3
 
 class SemanticSegmenter():
     def __init__(self, opt):
-        if opt.semseg == 'DeepLabV3':
+        if opt.semseg_method == 'DeepLabV3':
             self.model = self._set_deeplabv3(opt)
         else:
             raise NotImplementedError('Please prepare {} model in modules/ .'.format(opt.semseg))
 
-    def predict(self, img):
+    def __call__(self, img):
         # semantic segmentation
         label_map = self.model(img)
         return label_map
