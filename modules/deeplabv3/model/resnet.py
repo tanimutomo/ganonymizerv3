@@ -100,7 +100,7 @@ class ResNet_Bottleneck_OS16(nn.Module):
             # remove fully connected layer, avg pool and layer5:
             self.resnet = nn.Sequential(*list(resnet.children())[:-3])
 
-            print ("pretrained resnet, 50")
+            print ("[INFO] pretrained resnet, 50")
         elif num_layers == 101:
             resnet = models.resnet101()
             # load pretrained model:
@@ -108,7 +108,7 @@ class ResNet_Bottleneck_OS16(nn.Module):
             # remove fully connected layer, avg pool and layer5:
             self.resnet = nn.Sequential(*list(resnet.children())[:-3])
 
-            print ("pretrained resnet, 101")
+            print ("[INFO] pretrained resnet, 101")
         elif num_layers == 152:
             resnet = models.resnet152()
             # load pretrained model:
@@ -116,7 +116,7 @@ class ResNet_Bottleneck_OS16(nn.Module):
             # remove fully connected layer, avg pool and layer5:
             self.resnet = nn.Sequential(*list(resnet.children())[:-3])
 
-            print ("pretrained resnet, 152")
+            print ("[INFO] pretrained resnet, 152")
         else:
             raise Exception("num_layers must be in {50, 101, 152}!")
 
@@ -144,7 +144,7 @@ class ResNet_BasicBlock_OS16(nn.Module):
             self.resnet = nn.Sequential(*list(resnet.children())[:-3])
 
             num_blocks = 2
-            print ("pretrained resnet, 18")
+            print ("[INFO] pretrained resnet, 18")
         elif num_layers == 34:
             resnet = models.resnet34()
             # load pretrained model:
@@ -153,7 +153,7 @@ class ResNet_BasicBlock_OS16(nn.Module):
             self.resnet = nn.Sequential(*list(resnet.children())[:-3])
 
             num_blocks = 3
-            print ("pretrained resnet, 34")
+            print ("[INFO] pretrained resnet, 34")
         else:
             raise Exception("num_layers must be in {18, 34}!")
 
@@ -182,7 +182,7 @@ class ResNet_BasicBlock_OS8(nn.Module):
 
             num_blocks_layer_4 = 2
             num_blocks_layer_5 = 2
-            print ("pretrained resnet, 18")
+            print ("[INFO] pretrained resnet, 18")
         elif num_layers == 34:
             resnet = models.resnet34()
             # load pretrained model:
@@ -192,7 +192,7 @@ class ResNet_BasicBlock_OS8(nn.Module):
 
             num_blocks_layer_4 = 6
             num_blocks_layer_5 = 3
-            print ("pretrained resnet, 34")
+            print ("[INFO] pretrained resnet, 34")
         else:
             raise Exception("num_layers must be in {18, 34}!")
 
