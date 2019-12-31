@@ -12,7 +12,7 @@ class MaskCreater:
     def __init__(self, opt):
         self.shadow_angle = opt.shadow_angle
         self.kernel_ratio = opt.kernel_ratio
-        self.shadow_height_factor = opt.shadow_height_factor
+        self.shadow_height_iter = opt.shadow_height_iter
         self.rough_obj_size = opt.rough_obj_size
         self.device = opt.device
 
@@ -25,6 +25,7 @@ class MaskCreater:
 
     def __call__(self, segmap: torch.Tensor) -> (torch.Tensor, float):
         mask = self.get_base_mask(segmap)
+        self.ksize = int(np.mean(mask.shape) * self.kernel_ratio)
         mask = mask.reshape(1, 1, mask.shape[0], mask.shape[1])
         mask = self.cleaning_mask(mask)
         mask = self.include_shadow(mask)
@@ -40,24 +41,26 @@ class MaskCreater:
         return where(obj_mask==255, 1, 0).to(torch.float32)
 
     def cleaning_mask(self, mask: torch.Tensor) -> torch.Tensor:
-        size = int(np.mean(mask.shape[-2:]) * self.kernel_ratio)
-        kernel = get_circle_kernel(size).to(self.device)
+        kernel = get_circle_kernel(self.ksize).to(self.device)
         out = closing(mask, kernel)
         out = opening(out, kernel)
         return out
 
     def include_shadow(self, mask: torch.Tensor) -> torch.Tensor:
-        size = int(np.mean(mask.shape[-2:]) * self.kernel_ratio) * self.shadow_height_factor
+        size = int(np.mean(mask.shape[-2:]) * self.kernel_ratio)
+        out = mask.clone()
         shadow_kernel = get_circle_kernel(
-            size,
+            self.ksize,
             start = 270 - self.shadow_angle//2,
             end = 285 - self.shadow_angle//2
         ).to(self.device)
-        return morph_transform(mask, shadow_kernel, transform='dilation')
+        for _ in range(self.shadow_height_iter):
+            out = morph_transform(out, shadow_kernel, transform='dilation')
+        return out
 
     def get_max_obj_size(self, mask: torch.Tensor) -> int:
         size = int(np.mean(mask.shape[-2:]) * self.kernel_ratio)
-        kernel = get_circle_kernel(size).to(self.device)
+        kernel = get_circle_kernel(self.ksize).to(self.device)
         out = mask.clone()
         for itr in range(100):
             out = morph_transform(out, kernel, transform='erosion')
