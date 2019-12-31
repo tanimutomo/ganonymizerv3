@@ -65,9 +65,9 @@ def get_options(args=None):
         help='kernel size = image size * kernel_ratio'
     )
     parser.add_argument(
-        '--shadow_height_factor', 
-        type=int, default=5,
-        help='shadow_height = image size * kernel_ratio * shadow_height_factor'
+        '--shadow_height_iter', 
+        type=int, default=10,
+        help='shadow_height = image size * kernel_ratio * shadow_height_iter'
     )
     parser.add_argument(
         '--rough_obj_size', 
@@ -88,7 +88,7 @@ def get_options(args=None):
     )
     parser.add_argument(
         '--max_hole_size', 
-        type=int, default=128,
+        type=int, default=100,
         help='maximum hole size when inpainting'
     )
 
