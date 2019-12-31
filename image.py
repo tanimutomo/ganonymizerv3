@@ -12,9 +12,7 @@ def main(args=None):
     opt = get_options(args)
     img, opt.fname, opt.fext = load_img(opt.input)
     model = GANonymizer(opt)
-    start = time.time()
-    out = model(img)
-    print('[INFO] elapsed time :', time.time() - start)
+    _, out = model(img)
     if opt.mode != 'debug':
         out.save(os.path.join(opt.log, 'output.png'))
 
