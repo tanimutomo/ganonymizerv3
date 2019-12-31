@@ -46,40 +46,37 @@ class Debugger:
     def value(self, value, comment):
         if self.mode != 'debug':
             return
-        print('-----', comment, '-----')
-        print(value)
-        print('-' * (len(comment) + 12))
+        print('[DEBUG]', comment, ':', value)
 
     def matrix(self, mat, comment):
         if self.mode != 'debug':
             return
-        print('-----', comment, '-----')
+        s = '[DEBUG] ' + comment + ' >>> '
         if type(mat) is torch.Tensor:
             if 'float' in str(mat.dtype):
-                print('shape: {}   dtype: {}   min: {}   mean: {}   median: {}   max: {}   device: {}'.format(
-                    mat.shape, mat.dtype, mat.min(), mat.mean(), mat.median(), mat.max(), mat.device))
+                s += 'shape: {}   dtype: {}   min: {}   mean: {}   median: {}   max: {}   device: {}'.format(
+                    mat.shape, mat.dtype, mat.min(), mat.mean(), mat.median(), mat.max(), mat.device)
             else:
-                print('shape: {}   dtype: {}   min: {}   mean: {}   median: {}   max: {}   device: {}'.format(
-                    mat.shape, mat.dtype, mat.min(), mat.to(torch.float32).mean(), mat.median(), mat.max(), mat.device))
+                s += 'shape: {}   dtype: {}   min: {}   mean: {}   median: {}   max: {}   device: {}'.format(
+                    mat.shape, mat.dtype, mat.min(), mat.to(torch.float32).mean(), mat.median(), mat.max(), mat.device)
 
         elif type(mat) is np.ndarray:
             if mat.ndim == 1:
-                print(mat)
+                s += mat
             else:
-                print('shape: {}   dtype: {}   min: {}   mean: {}   median: {}   max: {}'.format(
-                    mat.shape, mat.dtype, mat.min(), mat.mean(), mat.median(), mat.max()))
+                s += 'shape: {}   dtype: {}   min: {}   mean: {}   median: {}   max: {}'.format(
+                    mat.shape, mat.dtype, mat.min(), mat.mean(), mat.median(), mat.max())
         else:
-            print('[Warning] Input type is {}, not matrix(numpy.ndarray or torch.tensor)!'.format(
-                type(mat)))
-            print(mat)
-        print('-' * (len(comment) + 12))
+            s += mat
+            print('[WARNING] Input type is {}, not matrix(numpy.ndarray or torch.tensor)!'.format(type(mat)))
+        print(s)
 
     def imsave(self, img, filename):
         if self.mode != 'save':
             return
         path = os.path.join(self.save_dir, filename)
         if type(img) is torch.Tensor:
-            img = self.to_pil(img)
+            img = self.to_pil(img.to(torch.float32).squeeze().cpu())
             img.save(path)
         elif type(img) is np.ndarray:
             img = Image.fromarray(img)
