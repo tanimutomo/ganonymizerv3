@@ -3,6 +3,7 @@ import numpy as np
 import os
 import pickle
 import PIL
+import time
 import torch
 import torchvision
 
@@ -23,8 +24,8 @@ class GANonymizer:
 
         print('[INFO] Loading modules')
         self.ss = SemanticSegmenter(opt)
-        self.mc = MaskCreater(opt)
-        self.ii = ImageInpainter(opt)
+        self.mc = MaskCreater(opt, self.debugger)
+        self.ii = ImageInpainter(opt, self.debugger)
 
         self.to_tensor = transforms.ToTensor()
         self.to_pil = transforms.ToPILImage()
@@ -37,6 +38,7 @@ class GANonymizer:
         Returns:
             output image (PIL.Image)
         """
+        start_time = time.time()
         # resize and convert to torch.Tensor
         img, base_size = self.preprocess(pil_img)
 
@@ -52,7 +54,8 @@ class GANonymizer:
         # resize and convert to PIL
         output = self.postprocess(inpainted, base_size)
 
-        return output
+        print('[INFO] elapsed time :', time.time() - start_time)
+        return self.to_pil(img), output
 
     def preprocess(self, img):
         print('===== Preprocess =====')
@@ -95,7 +98,6 @@ class GANonymizer:
         # inpainter
         print('===== Image Inpainting =====')
         inpainted, inpainted_edge, edge = self.ii(img, mask, max_obj_size)
-        print('[INFO] inpainted image size :', inpainted.shape)
         self.debugger.imsave(edge, 'edge.png')
         self.debugger.imsave(inpainted_edge, 'inpainted_edge.png')
         return inpainted
