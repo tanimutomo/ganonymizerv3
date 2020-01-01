@@ -16,7 +16,7 @@ class ImageInpainter():
             self.model = self.set_edge_connect(opt)
 
     def __call__(self, img: torch.Tensor, mask: torch.Tensor, max_obj_size: float):
-        resize_factor = min(self.max_hole_size / max_obj_size, 1)
+        resize_factor = 1 if max_obj_size == 0 else min(self.max_hole_size / max_obj_size, 1)
         img_resized = self.resize(img, resize_factor)
         mask_resized = self.resize(mask.unsqueeze(0), resize_factor).squeeze()
         inpainted_resized, inpainted_edge, edge = self.model.inpaint(img_resized, mask_resized)
@@ -25,6 +25,8 @@ class ImageInpainter():
         return inpainted, inpainted_edge, edge
 
     def resize(self, img: torch.Tensor, resize_factor: float) -> torch.Tensor:
+        if resize_factor == 0:
+            return img
         new_h = int(img.shape[1] * resize_factor)
         new_w = int(img.shape[2] * resize_factor)
         new_h -= new_h % 4
