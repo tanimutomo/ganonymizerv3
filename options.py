@@ -74,6 +74,11 @@ def get_options(args=None):
         type=strtobool, default=False,
         help='use rough obj size and skip the process for estimating max obj size for making process fast'
     )
+    parser.add_argument(
+        '--num_iter_expansion', 
+        type=int, default=1,
+        help='number of iteration for expanding mask area'
+    )
 
     # inpaint
     parser.add_argument(
