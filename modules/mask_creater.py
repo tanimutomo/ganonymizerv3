@@ -12,6 +12,7 @@ class MaskCreater:
     def __init__(self, opt, debugger):
         self.shadow_angle = opt.shadow_angle
         self.kernel_ratio = opt.kernel_ratio
+        self.num_iter_expansion = opt.num_iter_expansion
         self.shadow_height_iter = opt.shadow_height_iter
         self.rough_obj_size = opt.rough_obj_size
         self.device = opt.device
@@ -29,13 +30,14 @@ class MaskCreater:
                 self.road_ids.append(label.trainId)
 
     def __call__(self, segmap: torch.Tensor) -> (torch.Tensor, float):
-        obj_mask = self.get_base_mask(segmap, self.prvobj_ids)
-        road_mask = self.get_base_mask(segmap, self.road_ids)
+        obj_mask = self.create_base_mask(segmap, self.prvobj_ids)
+        road_mask = self.create_base_mask(segmap, self.road_ids)
         self.debugger.imsave(road_mask, 'road_mask.png')
 
         self.set_base_kernel(segmap.shape)
         obj_mask = obj_mask.reshape(1, 1, obj_mask.shape[0], obj_mask.shape[1])
-        obj_mask = self.cleaning_mask(obj_mask)
+        obj_mask = self.clean_mask(obj_mask)
+        obj_mask = self.expand_mask(obj_mask)
         obj_mask = self.include_shadow(obj_mask, road_mask)
         max_obj_size = self.get_max_obj_size(obj_mask)
         return obj_mask.squeeze().cpu(), max_obj_size
@@ -44,7 +46,7 @@ class MaskCreater:
         self.ksize = int(np.mean(shape) * self.kernel_ratio)
         self.kernel = get_circle_kernel(self.ksize).to(self.device)
     
-    def get_base_mask(self, segmap: torch.Tensor, label_ids: list) -> torch.Tensor:
+    def create_base_mask(self, segmap: torch.Tensor, label_ids: list) -> torch.Tensor:
         obj_mask = segmap.clone().to(self.device)
         road_mask = segmap.clone().to(self.device)
         for id_ in label_ids:
@@ -53,18 +55,24 @@ class MaskCreater:
                                    obj_mask)
         return where(obj_mask==255, 1, 0).to(torch.float32)
 
-    def cleaning_mask(self, mask: torch.Tensor) -> torch.Tensor:
+    def clean_mask(self, mask: torch.Tensor) -> torch.Tensor:
         out = closing(mask, self.kernel)
         out = opening(out, self.kernel)
         return out
 
-    def include_shadow(self, mask: torch.Tensor, road_mask: torch.Tensor) -> torch.Tensor:
+    def expand_mask(self, mask: torch.Tensor) -> torch.Tensor:
         out = mask.clone()
+        for _ in range(self.num_iter_expansion):
+            out = morph_transform(out, self.kernel, transform='dilation')
+        return out
+
+    def include_shadow(self, mask: torch.Tensor, road_mask: torch.Tensor) -> torch.Tensor:
         shadow_kernel = get_circle_kernel(
             self.ksize,
             start = 270 - self.shadow_angle//2,
             end = 285 - self.shadow_angle//2
         ).to(self.device)
+        out = mask.clone()
         for _ in range(self.shadow_height_iter):
             out = morph_transform(out, shadow_kernel, transform='dilation')
         shadow = where(out - mask + road_mask == 2, 1, 0)
