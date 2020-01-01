@@ -133,6 +133,8 @@ Pipfile
 
 data/
 log/
+notebook/
+.vscode/
 
 *.pth
 

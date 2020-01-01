@@ -2,6 +2,9 @@ import copy
 import cv2
 import numpy as np
 import os
+import torchvision
+
+import torchvision.transforms.functional as F
 
 from modules.ganonymizer import GANonymizer
 from options import get_options
@@ -16,7 +19,7 @@ def main(args=None):
     fname, cap, origin_fps, frames, width, height = load_video(opt.input)
     if opt.mode != 'debug':
         writer = video_writer(os.path.join(opt.log, 'output.avi'),
-                            origin_fps, width, height*2)
+                              origin_fps, width, height, opt.resize_factor)
     model = GANonymizer(opt)
 
     while(cap.isOpened()):
@@ -27,10 +30,9 @@ def main(args=None):
             print('[INFO] Count: {}/{}'.format(count, frames))
 
             # process
-            img = copy.deepcopy(frame)
-            output = model(img)
-            output = np.array(output)
-            concat = np.concatenate([frame, output], axis=0)
+            input, output = model(F.to_pil_image(frame))
+            input, output = np.array(input), np.array(output)
+            concat = np.concatenate([input, output], axis=0)
             if opt.mode != 'debug':
                 writer.write(concat)
             count += 1
@@ -44,7 +46,7 @@ def main(args=None):
 
 
 def load_video(path):
-    print('===== Loading Video =====')
+    print('[INFO] Loading video')
     fname, fext = path.split('/')[-1].split('.')
     cap = cv2.VideoCapture(path)
     W = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
@@ -55,13 +57,18 @@ def load_video(path):
     return fname, cap, fps, frames, W, H
     
 
-def video_writer(path, fps, width, height):
-    print("Saved Video Path:", path)
+def video_writer(path, fps, width, height, resize_factor):
+    print("[INFO] Saved Video Path:", path)
+    if resize_factor is not None:
+        width = int(width * resize_factor)
+        height = int(height * resize_factor)
+        width -= width % 4
+        height -= height % 4
+    height *= 2
     # video writer
     fourcc = cv2.VideoWriter_fourcc(*'XVID')
     writer = cv2.VideoWriter(path, fourcc, fps, (width, height))
     return writer
-
 
 
 if __name__ == '__main__':

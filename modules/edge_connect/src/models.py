@@ -20,7 +20,7 @@ class BaseModel(nn.Module):
 
     def load(self):
         if os.path.exists(self.gen_weights_path):
-            print('Loading %s generator...' % self.name)
+            print('[INFO] Loading %s generator...' % self.name)
             
             if torch.cuda.is_available():
                 data = torch.load(self.gen_weights_path)
@@ -32,7 +32,7 @@ class BaseModel(nn.Module):
 
         # load discriminator only when training
         if self.config.MODE == 1 and os.path.exists(self.dis_weights_path):
-            print('Loading %s discriminator...' % self.name)
+            print('[INFO] Loading %s discriminator...' % self.name)
 
             if torch.cuda.is_available():
                 data = torch.load(self.dis_weights_path)
