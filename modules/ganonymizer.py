@@ -54,13 +54,15 @@ class GANonymizer:
         # resize and convert to PIL
         output = self.postprocess(inpainted, base_size)
 
-        print('[INFO] elapsed time :', time.time() - start_time)
+        print('[INFO] whole elapsed time :', time.time() - start_time)
         return self.to_pil(img), output
 
     def preprocess(self, img):
         print('===== Preprocess =====')
         print('[INFO] original image size :', img.size)
+        start = time.time()
         if self.resize_factor is None:
+            print('[INFO] elapsed time :', time.time() - start)
             return self.to_tensor(img), img.size
         new_w = int(img.size[0] * self.resize_factor)
         new_h = int(img.size[1] * self.resize_factor)
@@ -68,41 +70,49 @@ class GANonymizer:
         new_h -= new_h % 4
         img = img.resize((new_w, new_h))
         print('[INFO] resized image size :', (new_w, new_h))
+        print('[INFO] elapsed time :', time.time() - start)
         return self.to_tensor(img), (new_w, new_h)
 
     def detect(self, img):
         # semantic segmentation
         print('===== Semantic Segmentation =====')
+        start = time.time()
         label_map = self.ss(img)
-
         vis, lc_img = label_img_to_color(label_map)
         self.debugger.imsave(vis, 'color_semseg_map.png')
         self.debugger.imsave(lc_img, 'label_color_map.png')
+        print('[INFO] elapsed time :', time.time() - start)
         return label_map
 
     def create_mask(self, img, label_map):
         # create mask image and image with mask
         print('===== Creating Mask Image =====')
+        start = time.time()
         mask, max_obj_size = self.mc(label_map) # shape=(h, w) # dtype=torch.float32
         print('[INFO] max_obj_size :', max_obj_size)
-
         # visualize the mask overlayed image
         mask3c = torch.stack([mask, torch.zeros_like(mask), torch.zeros_like(mask)], dim=0) 
         self.debugger.matrix(mask3c, 'mask3c')
         overlay = ((img*0.8 + mask3c*0.2) * 255).to(torch.uint8)
         self.debugger.imsave(mask, 'mask.png')
         self.debugger.imsave(overlay, 'mask_overlayed.png')
+        print('[INFO] elapsed time :', time.time() - start)
         return mask, max_obj_size
 
     def inpaint(self, img: torch.Tensor, mask: torch.Tensor, max_obj_size: float):
         # inpainter
         print('===== Image Inpainting =====')
+        start = time.time()
         inpainted, inpainted_edge, edge = self.ii(img, mask, max_obj_size)
         self.debugger.imsave(edge, 'edge.png')
         self.debugger.imsave(inpainted_edge, 'inpainted_edge.png')
+        print('[INFO] elapsed time :', time.time() - start)
         return inpainted
 
     def postprocess(self, img: torch.Tensor, size: tuple) -> torch.Tensor:
+        print('===== Postprocess =====')
+        start = time.time()
         out = self.to_pil(img)
         out = out.resize(size)
+        print('[INFO] elapsed time :', time.time() - start)
         return out
