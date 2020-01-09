@@ -33,6 +33,11 @@ def get_options(args=None):
         type=int, default=0,
         help='id for cuda'
     )
+    parser.add_argument(
+        '--realtime',
+        type=strtobool, default=False,
+        help='realtime ganonymizerv3'
+    )
 
     # resize
     parser.add_argument(

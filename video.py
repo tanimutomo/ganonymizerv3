@@ -16,8 +16,11 @@ def main(args=None):
     print("Loading '{}'".format(opt.input))
     count = 1
     # Load the video
-    fname, cap, origin_fps, frames, width, height = load_video(opt.input)
-    if opt.mode != 'debug':
+    if opt.realtime:
+        cap = cv2.VideoCapture(int(opt.input))
+    else:
+        fname, cap, origin_fps, frames, width, height = load_video(opt.input)
+    if opt.mode != 'debug' and not opt.realtime:
         writer = video_writer(os.path.join(opt.log, 'output.avi'),
                               origin_fps, width, height, opt.resize_factor)
     model = GANonymizer(opt)
@@ -34,14 +37,20 @@ def main(args=None):
             input, output = np.array(input), np.array(output)
             concat = np.concatenate([input, output], axis=0)
             if opt.mode != 'debug':
-                writer.write(concat)
+                if opt.realtime:
+                    cv2.imshow('frame', concat)
+                    if cv2.waitKey(1) & 0xFF == ord('q'):
+                        break
+                else:
+                    writer.write(concat)
             count += 1
         else:
             break
 
     # Stop video process
     cap.release()
-    writer.release()
+    if opt.mode != 'debug' and not opt.realtime:
+        writer.release()
     cv2.destroyAllWindows()
 
 
