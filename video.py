@@ -18,6 +18,7 @@ def main(args=None):
     # Load the video
     if opt.realtime:
         cap = cv2.VideoCapture(int(opt.input))
+        frames = 0
     else:
         fname, cap, origin_fps, frames, width, height = load_video(opt.input)
     if opt.mode != 'debug' and not opt.realtime:
