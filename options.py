@@ -58,31 +58,36 @@ def get_options(args=None):
         help='depth of backborn resnet'
     )
 
-    # mask
+    # mask and shadow
     parser.add_argument(
         '--shadow_angle', 
-        type=int, default=30,
+        type=int, default=90,
         help='angle for including shadow to mask'
     )
     parser.add_argument(
-        '--kernel_ratio', 
+        '--base_ksize', 
+        type=int, default=7,
+        help='base kernel size for morphology transformation'
+    )
+    parser.add_argument(
+        '--shadow_ratio', 
+        type=int, default=0.3,
+        help='shadow height to image height ratio'
+    )
+    parser.add_argument(
+        '--expand_ratio',
         type=float, default=0.01,
-        help='kernel size = image size * kernel_ratio'
+        help='expansion width to image size ratio'
     )
     parser.add_argument(
-        '--shadow_height_iter', 
-        type=int, default=10,
-        help='shadow_height = image size * kernel_ratio * shadow_height_iter'
+        '--noise_ratio',
+        type=float, default=0.01,
+        help='max noise size to image size ratio '
     )
     parser.add_argument(
-        '--rough_obj_size', 
-        type=strtobool, default=False,
-        help='use rough obj size and skip the process for estimating max obj size for making process fast'
-    )
-    parser.add_argument(
-        '--num_iter_expansion', 
-        type=int, default=1,
-        help='number of iteration for expanding mask area'
+        '--obj_h_ratio',
+        type=float, default=0.5,
+        help='max object size to image size ratio '
     )
 
     # inpaint
