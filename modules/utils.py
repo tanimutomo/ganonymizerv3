@@ -3,6 +3,8 @@ import cv2
 import numpy as np
 import os
 import PIL
+import sys
+import time
 import torch
 import torchvision
 
@@ -46,7 +48,7 @@ class Debugger:
     def value(self, value, comment):
         if self.mode != 'debug':
             return
-        print('[DEBUG]', comment, ':', value)
+        print('[DEBUG]', comment, '>>>', value)
 
     def matrix(self, mat, comment):
         if self.mode != 'debug':
@@ -83,6 +85,18 @@ class Debugger:
             img.save(path)
         else:
             raise RuntimeError('The type of input image must be numpy.ndarray or torch.Tensor.')
+
+    def exit(self):
+        print('[DEBUG] code is exited by Debugger')
+        sys.exit(0)
+
+    def timer_start(self):
+        if self.mode != 'debug': return
+        self.timer_begin = time.time()
+    
+    def timer_stop(self, comment: str):
+        if self.mode != 'debug': return
+        print('[DEBUG]', 'TIME:', comment, '>>>', time.time() - self.timer_begin)
 
 
 # function for colorizing a label image:
