@@ -36,7 +36,7 @@ def get_options(args=None):
     parser.add_argument(
         '--realtime',
         type=strtobool, default=False,
-        help='realtime ganonymizerv3'
+        help='realtime ganonymizerv3 for video processing'
     )
 
     # resize

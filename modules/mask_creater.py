@@ -82,9 +82,8 @@ class MaskCreater:
     def get_max_obj_size(self, mask: torch.Tensor) -> int:
         out = mask.clone()
         for itr in range(100):
+            if out.sum() == 0: break
             out = morph_transform(out, self.kernel, transform='erosion')
-            if out.sum() == 0:
-                break
         return itr * self.ksize
 
 
