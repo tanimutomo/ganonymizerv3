@@ -43,8 +43,8 @@ class MaskCreater:
         self.debugger.imsave(road_mask.squeeze(), 'road_mask.png')
 
         obj_mask = self.expand_mask(obj_mask)
-        self.check_height(obj_mask)
-        obj_mask = self.include_shadow(obj_mask, road_mask)
+        obj_mask = self.check_height(obj_mask, road_mask)
+        # obj_mask = self.include_shadow(obj_mask, road_mask)
 
         max_obj_size = self.get_max_obj_size(obj_mask)
         return obj_mask.squeeze().cpu(), max_obj_size
@@ -74,29 +74,52 @@ class MaskCreater:
         self.debugger.imsave(out.squeeze(), 'mask_expanded.png')
         return out
 
-    def check_height(self, mask:torch.Tensor) -> None:
+    def check_height(self, obj_mask: torch.Tensor, road_mask: torch.Tensor) -> None:
         # h, w, itr = 5, 1, mask.shape[2] // self.thresh_max_obj // 2
-        h, w, itr = 5, 1, mask.shape[2] // 2 // 2
-        out = mask.clone()
-        hmap = torch.zeros_like(mask)
+        h, w, itr = 5, 1, obj_mask.shape[2] // 2 // 2
+        out = obj_mask.clone()
+        hmap = torch.zeros_like(obj_mask).to(self.device)
         vert_kernel = torch.ones(1, 1, h, w).to(device=self.device, dtype=torch.float32)
         for _ in range(itr):
             out = morph_transform(out, vert_kernel, transform='erosion')
             hmap += out * (h-1)//2 * 2
-        hmap = hmap.squeeze()
-        heights = torch.max(hmap, 0).values
+        heights = torch.max(hmap.squeeze(), 0).values
         self.debugger.matrix(heights, 'heights')
-        p25, p50, p75 = percentile(heights, 25), percentile(heights, 50), percentile(heights, 75)
-        self.debugger.value([p25, p50, p75], 'percentiles')
+        percs = 0, percentile(heights, 25), percentile(heights, 50), percentile(heights, 75), hmap.max()
+        self.debugger.value(percs, 'percentiles')
         self.debugger.imsave(hmap, 'hmap.png')
-        hmap_p25 = (((0 < heights) & (heights <= p25)).unsqueeze(0).expand(hmap.shape[0], -1) * hmap) > 1
-        self.debugger.imsave(hmap_p25, 'hmap_p25.png')
-        hmap_p50 = (((p25 < heights) & (heights <= p50)).unsqueeze(0).expand(hmap.shape[0], -1) * hmap) > 1
-        self.debugger.imsave(hmap_p50, 'hmap_p50.png')
-        hmap_p75 = (((p50 < heights) & (heights <= p75)).unsqueeze(0).expand(hmap.shape[0], -1) * hmap) > 1
-        self.debugger.imsave(hmap_p75, 'hmap_p75.png')
-        hmap_p100 = ((p75 < heights).unsqueeze(0).expand(hmap.shape[0], -1) * hmap) > 1
-        self.debugger.imsave(hmap_p100, 'hmap_p100.png')
+
+        k_size = 7
+        obj_with_shadow = torch.zeros_like(hmap)
+        for i in range(len(percs) - 1):
+            hmap_in_p = (percs[i] < heights) & (heights <= percs[i+1])
+            hmap_in_p = hmap_in_p.reshape(1, 1, 1, heights.shape[0])
+            hmap_in_p = (hmap_in_p.expand(-1, -1, hmap.shape[2], -1) * hmap) > 1
+            self.debugger.imsave(hmap_in_p, 'hmap_in_p{}.png'.format(i))
+            hmap_in_p_with_s = self._include_shadow(hmap_in_p, k_size, int(percs[i] + percs[i+1])//2)
+            self.debugger.imsave(hmap_in_p_with_s, 'hmap_in_p{}_with_s.png'.format(i))
+            obj_with_shadow += hmap_in_p_with_s
+
+        obj_with_shadow = where(obj_with_shadow > 0, 1, 0).to(torch.float32)
+        self.debugger.imsave(obj_with_shadow, 'obj_with_shadow.png')
+        shadow = where(obj_with_shadow - obj_mask + road_mask == 2, 1, 0)
+        self.debugger.imsave(shadow.squeeze(), 'shadow.png')
+        # out = closing(mask + shadow, self.kernel)
+        self.debugger.imsave(obj_mask + shadow, 'mask_with_shadow_on_road.png')
+        return out.to(torch.float32)
+
+    def _include_shadow(self, mask: torch.Tensor, k_size: int, obj_height: int) -> torch.Tensor:
+        shadow_ratio = 3
+        itr = obj_height // shadow_ratio // ((k_size - 1) // 2)
+        shadow_kernel = get_circle_kernel(
+            k_size,
+            start = 270 - self.shadow_angle//2,
+            end = 270 + self.shadow_angle//2
+        ).to(self.device)
+        out = mask.clone()
+        for _ in range(itr):
+            out = morph_transform(out, shadow_kernel, transform='dilation')
+        return out.to(torch.float32)
 
     def include_shadow(self, mask: torch.Tensor, road_mask: torch.Tensor) -> torch.Tensor:
         shadow_kernel = get_circle_kernel(
@@ -135,6 +158,7 @@ def closing(img: torch.Tensor, kernel: torch.Tensor) -> torch.Tensor:
 
 
 def morph_transform(img: torch.Tensor, kernel: torch.Tensor, transform: str) -> torch.Tensor:
+    img = img.to(torch.float32)
     padding = ((kernel.shape[2] - 1) // 2, (kernel.shape[3] - 1) // 2)
     out = F.conv2d(img, kernel, padding=padding)
     if transform == 'erosion':
