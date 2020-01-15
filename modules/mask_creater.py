@@ -76,11 +76,12 @@ class MaskCreater:
     def comp_obj_heights(self, obj_mask: torch.Tensor) -> torch.Tensor:
         num_iter = int(self.obj_h_ratio * obj_mask.shape[2] // 2)
         vert_kernel = torch.ones(1, 1, self.ksize, 1).to(device=self.device, dtype=torch.float32)
-        out = obj_mask.clone()
         hmap = torch.zeros_like(obj_mask).to(self.device)
+        out = obj_mask.clone()
         for _ in range(num_iter):
             out = morph_transform(out, vert_kernel, transform='erosion')
             hmap += out * (self.ksize-1)//2 * 2
+        self.debugger.save_colormap(hmap, 'hmap.png')
         heights = torch.max(hmap.squeeze(), 0).values
         self.debugger.matrix(heights, 'heights')
         return heights
@@ -89,23 +90,24 @@ class MaskCreater:
         percs = 0, percentile(heights, 25), percentile(heights, 50), percentile(heights, 75), heights.max()
         self.debugger.value(percs, 'percentiles')
 
-        obj_with_shadow = torch.zeros_like(obj_mask)
+        shadows = torch.zeros_like(obj_mask)
         for i in range(len(percs) - 1):
-            hmap_in_p = (percs[i] < heights) & (heights <= percs[i+1])
-            hmap_in_p = hmap_in_p.reshape(1, 1, 1, heights.shape[0])
-            hmap_in_p = (hmap_in_p.expand(-1, -1, obj_mask.shape[2], -1) * obj_mask) == 1
-            self.debugger.imsave(hmap_in_p, 'hmap_in_p{}.png'.format(i))
-            hmap_in_p_with_s = self._comp_shadow_area(hmap_in_p, self.ksize, int(percs[i] + percs[i+1])//2)
-            self.debugger.imsave(hmap_in_p_with_s, 'hmap_in_p{}_with_s.png'.format(i))
-            obj_with_shadow += hmap_in_p_with_s
-        obj_with_shadow = where(obj_with_shadow > 0, 1, 0).to(torch.float32)
-        self.debugger.imsave(obj_with_shadow, 'obj_with_shadow.png')
+            mask_in_p = ((percs[i] < heights) & (heights <= percs[i+1]))
+            mask_in_p = mask_in_p.reshape(1, 1, 1, heights.shape[0])
+            mask_in_p = (mask_in_p.expand(-1, -1, obj_mask.shape[2], -1) * obj_mask) == 1
+            self.debugger.imsave(mask_in_p, 'mask_in_p{}.png'.format(i))
+            mask_in_p_with_s = self._comp_shadow_area(mask_in_p, self.ksize, int(percs[i] + percs[i+1])//2)
+            shadow_in_p = mask_in_p_with_s - mask_in_p.to(torch.float32)
+            self.debugger.imsave(shadow_in_p, 'shadow_in_p{}.png'.format(i))
+            shadows += shadow_in_p
+        shadows = where(shadows > 0, 1, 0).to(torch.float32)
+        self.debugger.imsave(shadows, 'shadow_raw.png')
 
         # filtering shadow with road area
-        shadow = where(obj_with_shadow - obj_mask + road_mask == 2, 1, 0)
-        self.debugger.imsave(shadow.squeeze(), 'shadow.png')
-        out = obj_mask + shadow
-        self.debugger.imsave(out, 'mask_with_shadow_on_road.png')
+        shadow_on_road = where(shadows + road_mask == 2, 1, 0)
+        self.debugger.imsave(shadow_on_road.squeeze(), 'shadow_on_road.png')
+        out = obj_mask + shadow_on_road
+        self.debugger.imsave(out, 'mask_object_with_shadow_on_road.png')
         return out.to(torch.float32)
 
     def _comp_shadow_area(self, mask: torch.Tensor, k_size: int, obj_height: int) -> torch.Tensor:
