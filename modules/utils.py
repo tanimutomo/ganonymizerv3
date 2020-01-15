@@ -1,13 +1,18 @@
 import collections
 import cv2
+import matplotlib.pyplot as plt
+import mpl_toolkits
 import numpy as np
 import os
 import PIL
+import sys
+import time
 import torch
 import torchvision
 
 from PIL import Image
 from collections import namedtuple
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 from torchvision import transforms
 
 
@@ -46,14 +51,17 @@ class Debugger:
     def value(self, value, comment):
         if self.mode != 'debug':
             return
-        print('[DEBUG]', comment, ':', value)
+        print('[DEBUG]', comment, '>>>', value)
 
     def matrix(self, mat, comment):
         if self.mode != 'debug':
             return
         s = '[DEBUG] ' + comment + ' >>> '
         if type(mat) is torch.Tensor:
-            if 'float' in str(mat.dtype):
+            if 'bool' in str(mat.dtype):
+                s += 'shape: {}   dtype: {}   min: {}   max: {}   device: {}'.format(
+                    mat.shape, mat.dtype, mat.min(), mat.max(), mat.device)
+            elif 'float' in str(mat.dtype):
                 s += 'shape: {}   dtype: {}   min: {}   mean: {}   median: {}   max: {}   device: {}'.format(
                     mat.shape, mat.dtype, mat.min(), mat.mean(), mat.median(), mat.max(), mat.device)
             else:
@@ -72,17 +80,38 @@ class Debugger:
         print(s)
 
     def imsave(self, img, filename):
-        if self.mode != 'save':
-            return
+        if self.mode != 'save': return
         path = os.path.join(self.save_dir, filename)
         if type(img) is torch.Tensor:
             img = self.to_pil(img.to(torch.float32).squeeze().cpu())
-            img.save(path)
         elif type(img) is np.ndarray:
             img = Image.fromarray(img)
-            img.save(path)
         else:
             raise RuntimeError('The type of input image must be numpy.ndarray or torch.Tensor.')
+        img.save(path)
+
+    def save_colormap(self, tensor: torch.Tensor, filename: str) -> None:
+        if self.mode != 'save': return
+        path = os.path.join(self.save_dir, filename)
+        tensor = tensor.squeeze().cpu().numpy()
+        fig, ax = plt.subplots()
+        img = ax.imshow(tensor, cmap='jet')
+        divider = make_axes_locatable(ax)
+        cax = divider.append_axes("right", size="5%", pad=0.10)
+        fig.colorbar(img, cax=cax)
+        plt.savefig(path)
+
+    def exit(self):
+        print('[DEBUG] code is exited by Debugger')
+        sys.exit(0)
+
+    def timer_start(self):
+        if self.mode != 'debug': return
+        self.timer_begin = time.time()
+    
+    def timer_stop(self, comment: str):
+        if self.mode != 'debug': return
+        print('[DEBUG]', 'TIME:', comment, '>>>', time.time() - self.timer_begin)
 
 
 # function for colorizing a label image:

@@ -93,9 +93,10 @@ class GANonymizer:
         # visualize the mask overlayed image
         mask3c = torch.stack([mask, torch.zeros_like(mask), torch.zeros_like(mask)], dim=0) 
         self.debugger.matrix(mask3c, 'mask3c')
-        overlay = ((img*0.8 + mask3c*0.2) * 255).to(torch.uint8)
-        self.debugger.imsave(mask, 'mask.png')
-        self.debugger.imsave(overlay, 'mask_overlayed.png')
+        self.debugger.matrix(img, 'img')
+        overlay = img*0.8 + mask3c*0.2
+        self.debugger.imsave(mask, 'final_mask.png')
+        self.debugger.imsave(overlay, 'img_with_mask.png')
         print('[INFO] elapsed time :', time.time() - start)
         return mask, max_obj_size
 
