@@ -3,15 +3,22 @@ import cv2
 import numpy as np
 import os
 import torchvision
+import typing
 
 import torchvision.transforms.functional as F
+from typing import NewType, Tuple
 
 from modules.ganonymizer import GANonymizer
 from options import get_options
 
+VideoRead = NewType('VideoRead', cv2.VideoCapture)
+VideoWrite = NewType('VideoWrite', cv2.VideoWriter)
+
 
 def main(args=None):
     opt = get_options(args)
+    if opt.mode == 'save':
+        raise ValueError('In video processing, "mode" should be "exec" or "debug".')
 
     print("Loading '{}'".format(opt.input))
     count = 1
@@ -20,10 +27,10 @@ def main(args=None):
         cap = cv2.VideoCapture(int(opt.input))
         frames = 0
     else:
-        fname, cap, origin_fps, frames, width, height = load_video(opt.input)
+        cap, origin_fps, frames, width, height = load_video(opt.input)
     if opt.mode != 'debug' and not opt.realtime:
-        writer = video_writer(os.path.join(opt.log, 'output.avi'),
-                              origin_fps, width, height, opt.resize_factor)
+        writer = video_writer(opt.output_path, origin_fps,
+                              width, height, opt.resize_factor)
     model = GANonymizer(opt)
 
     while(cap.isOpened()):
@@ -55,29 +62,28 @@ def main(args=None):
     cv2.destroyAllWindows()
 
 
-def load_video(path):
-    print('[INFO] Loading video')
-    fname, fext = path.split('/')[-1].split('.')
+def load_video(path: str) -> Tuple[VideoRead, int, int, int, int]:
+    print('[INFO] Loading "{}" ...'.format(path))
     cap = cv2.VideoCapture(path)
     W = int(cap.get(cv2.CAP_PROP_FRAME_WIDTH))
     H = int(cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
     frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT))
-    fps = cap.get(cv2.CAP_PROP_FPS)
+    fps = int(cap.get(cv2.CAP_PROP_FPS))
     print('[INFO] total frame: {}, fps: {}, width: {}, height: {}'.format(frames, fps, W, H))
-    return fname, cap, fps, frames, W, H
+    return cap, fps, frames, W, H
     
 
-def video_writer(path, fps, width, height, resize_factor):
-    print("[INFO] Saved Video Path:", path)
+def video_writer(path: str, fps: int, width: int, height: int,
+                 resize_factor: float) -> VideoWrite:
+    print("[INFO] Save output video in", path)
     if resize_factor is not None:
         width = int(width * resize_factor)
         height = int(height * resize_factor)
         width -= width % 4
         height -= height % 4
     height *= 2
-    # video writer
-    fourcc = cv2.VideoWriter_fourcc(*'XVID')
-    writer = cv2.VideoWriter(path, fourcc, fps, (width, height))
+    fourcc = cv2.VideoWriter_fourcc(*'MPEG')
+    writer = cv2.VideoWriter(path, fourcc, fourcc, (width, height))
     return writer
 
 

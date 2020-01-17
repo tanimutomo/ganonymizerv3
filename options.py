@@ -127,6 +127,9 @@ def get_options(args=None):
 
 
 def _set_output_path(opt):
+    if opt.output_dir is not None:
+        opt.output_path = os.paht.join(opt.output_dir, opt.input)
+        return opt
     is_abspath = True if opt.input[0] == '/' else False
     input_dirpath = '/'.join(opt.input.split('/')[:-1])
     input_filename = opt.input.split('/')[-1]
