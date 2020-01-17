@@ -135,6 +135,7 @@ data/
 log/
 notebook/
 .vscode/
+scripts/
 
 *.pth
 
