@@ -19,6 +19,11 @@ def get_options(args=None):
         help='path to input file'
     )
     parser.add_argument(
+        '--output_dir',
+        type=str, default=None,
+        help='path to directory to save output image or video'
+    )
+    parser.add_argument(
         '--mode', 
         type=str, default='exec', choices=['exec', 'debug', 'save'],
         help='mode for execution'
@@ -110,23 +115,42 @@ def get_options(args=None):
     # parse, print, and return
     opt = parser.parse_args(args)
 
-    # set device
-    opt.device = torch.device(
-        'cuda:{}'.format(opt.gpu_id) if torch.cuda.is_available() else 'cpu'
-    )
-    # set log directory
+    if opt.mode == 'exec':
+        opt = _set_output_path(opt)
+    elif opt.mode == 'save':
+        opt = _set_log_path(opt)
+    
+    opt = _set_device(opt)
+
+    _print_options(parser, opt)
+    return opt
+
+
+def _set_output_path(opt):
+    is_abspath = True if opt.input[0] == '/' else False
+    input_dirpath = '/'.join(opt.input.split('/')[:-1])
+    input_filename = opt.input.split('/')[-1]
+    output_dirpath = ('/' if is_abspath else '') \
+                        + input_dirpath + '.out'
+    os.makedirs(output_dirpath, exist_ok=True)
+    opt.output_path = os.path.join(output_dirpath, input_filename)
+    return opt
+
+
+def _set_log_path(opt):
     opt.log = os.path.join(
         opt.log_root,
         datetime.datetime.now().strftime('%Y%m%d-%H%M%S')
     )
-    opt.inter_log = None
-    if opt.mode != 'debug':
-        os.makedirs(opt.log)
-        if opt.mode == 'save':
-            opt.inter_log = os.path.join(opt.log, 'intermediates')
-            os.mkdir(opt.inter_log)
+    opt.inter_log = os.path.join(opt.log, 'intermediates')
+    os.makedirs(opt.inter_log)
+    return opt
 
-    _print_options(parser, opt)
+
+def _set_device(opt):
+    opt.device = torch.device(
+        'cuda:{}'.format(opt.gpu_id) if torch.cuda.is_available() else 'cpu'
+    )
     return opt
 
 
