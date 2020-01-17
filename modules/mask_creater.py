@@ -28,8 +28,10 @@ class MaskCreater:
                 self.road_ids.append(label.trainId)
 
     def __call__(self, segmap: torch.Tensor) -> (torch.Tensor, float):
+        self.debugger.matrix(segmap, 'segmap')
         obj_mask = self.create_base_mask(segmap, self.prvobj_ids)
         road_mask = self.create_base_mask(segmap, self.road_ids)
+        self.debugger.imsave(road_mask, 'road_mask_raw.png')
 
         self.set_base_kernel()
         obj_mask = obj_mask.reshape(1, 1, obj_mask.shape[0], obj_mask.shape[1])
@@ -61,8 +63,11 @@ class MaskCreater:
 
     def clean_mask(self, mask: torch.Tensor) -> torch.Tensor:
         num_iter = int(np.mean(mask.shape) * self.noise_ratio) // ((self.ksize - 1)//2)
+        self.debugger.imsave(mask.squeeze(), 'a.png')
         out = closing(mask, self.kernel, num_iter)
+        self.debugger.imsave(out.squeeze(), 'b.png')
         out = opening(out, self.kernel, num_iter)
+        self.debugger.imsave(out.squeeze(), 'c.png')
         return out
 
     def expand_mask(self, mask: torch.Tensor) -> torch.Tensor:
@@ -151,14 +156,32 @@ def closing(img: torch.Tensor, kernel: torch.Tensor, num_iter: int) -> torch.Ten
 
 def morph_transform(img: torch.Tensor, kernel: torch.Tensor, transform: str) -> torch.Tensor:
     img = img.to(torch.float32)
-    padding = ((kernel.shape[2] - 1) // 2, (kernel.shape[3] - 1) // 2)
-    out = F.conv2d(img, kernel, padding=padding)
+    pad_sizes = ((kernel.shape[2] - 1) // 2, (kernel.shape[3] - 1) // 2)
+    pad_val = 1 if transform == 'erosion' else 0
+    padded_img = padding(img, pad_sizes, pad_val)
+    out = F.conv2d(padded_img, kernel)
     if transform == 'erosion':
         condition = out == kernel.sum()
     elif transform == 'dilation':
         condition = out > 0
     out = where(condition, 1, 0)
     return out.to(torch.float32)
+
+
+def padding(img: torch.Tensor, sizes: tuple, val: int) -> torch.Tensor:
+    b, c, h, w = img.shape
+    padded_img = torch.full(
+        (b, c, h + 2*sizes[0], w + 2*sizes[1]),
+        val,
+        dtype=img.dtype, device=img.device
+    )
+    if sizes[0] == 0:
+        padded_img[:, :, :, sizes[1]:-sizes[1]] = img
+    elif sizes[1] == 0:
+        padded_img[:, :, sizes[0]:-sizes[0], :] = img
+    else:
+        padded_img[:, :, sizes[0]:-sizes[0], sizes[1]:-sizes[1]] = img
+    return padded_img
 
 
 def get_circle_kernel(size: int, start: int =0, end: int =360) -> torch.Tensor:
