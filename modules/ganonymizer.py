@@ -20,7 +20,10 @@ class GANonymizer:
     def __init__(self, opt):
         for k, v in opt.__dict__.items():
             setattr(self, k, v)
-        self.debugger = Debugger(opt.mode, save_dir=opt.inter_log)
+        self.debugger = Debugger(
+            opt.mode,
+            save_dir = opt.inter_log if opt.mode == 'save' else None
+        )
 
         print('[INFO] Loading modules')
         self.ss = SemanticSegmenter(opt)

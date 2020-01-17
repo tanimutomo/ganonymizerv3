@@ -9,11 +9,15 @@ import sys
 import time
 import torch
 import torchvision
+import typing
 
 from PIL import Image
 from collections import namedtuple
 from mpl_toolkits.axes_grid1 import make_axes_locatable
 from torchvision import transforms
+from typing import TypeVar
+
+Matrix = TypeVar('Matrix', np.ndarray, torch.Tensor)
 
 
 def demo_resize(img):
@@ -43,17 +47,19 @@ def demo_resize(img):
 
 
 class Debugger:
-    def __init__(self, mode, save_dir):
+    def __init__(self, mode: str, save_dir: str =None):
+        if mode == 'save':
+            assert save_dir is not None
         self.mode = mode
         self.save_dir = save_dir
         self.to_pil = transforms.ToPILImage()
 
-    def value(self, value, comment):
+    def value(self, value: any, comment: str) -> None:
         if self.mode != 'debug':
             return
         print('[DEBUG]', comment, '>>>', value)
 
-    def matrix(self, mat, comment):
+    def matrix(self, mat: Matrix, comment: str) -> None:
         if self.mode != 'debug':
             return
         s = '[DEBUG] ' + comment + ' >>> '
@@ -79,7 +85,7 @@ class Debugger:
             print('[WARNING] Input type is {}, not matrix(numpy.ndarray or torch.tensor)!'.format(type(mat)))
         print(s)
 
-    def imsave(self, img, filename):
+    def imsave(self, img: Matrix, filename: str) -> None:
         if self.mode != 'save': return
         path = os.path.join(self.save_dir, filename)
         if type(img) is torch.Tensor:
@@ -101,15 +107,15 @@ class Debugger:
         fig.colorbar(img, cax=cax)
         plt.savefig(path)
 
-    def exit(self):
+    def exit(self) -> None:
         print('[DEBUG] code is exited by Debugger')
         sys.exit(0)
 
-    def timer_start(self):
+    def timer_start(self) -> None:
         if self.mode != 'debug': return
         self.timer_begin = time.time()
     
-    def timer_stop(self, comment: str):
+    def timer_stop(self, comment: str) -> None:
         if self.mode != 'debug': return
         print('[DEBUG]', 'TIME:', comment, '>>>', time.time() - self.timer_begin)
 
